@@ -1,0 +1,7 @@
+[project]
+name = "security-assessment"
+version = "0.1.0"
+description = "Read-only package vulnerability queries using OSV"
+requires-python = ">=3.12"
+dependencies = []
+
