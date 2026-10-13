@@ -8,6 +8,11 @@ The first case is a public, synthetic **dependency assessment assistant** backed
 
 ## Milestones
 
+Current evidence: M0 baseline is implemented in `docs/M0_BASELINE.md` and
+`tests/fixtures/assessment_cases.json`. M1 is implemented with offline verification
+in `tests/test_osv.py`. Live OSV verification is blocked by workspace networking.
+Learner review is pending. M2–M6 are not implemented.
+
 ### M0 — Problem and evaluation baseline
 
 - Write three synthetic reviewer scenarios: a query with returned vulnerabilities, one with none returned, and an unavailable or malformed source.
@@ -101,3 +106,69 @@ Status terms: **explained** = can describe mechanism; **implemented/experimented
 - OSV supplies public vulnerability data. Internal compliance policy, credentials, and corporate network access are outside this public repository.
 - Build an evaluation baseline before the first LLM call. Keep API tests deterministic and live checks separate.
 - RAG, MCP, skills, and multi-agent orchestration are topics to evaluate as requirements arise. A skill may mean a prompt instruction, a code-backed capability, or a collection of tools; state the intended meaning in each design.
+
+## Review record — 2026-10-12 — M0/M1
+
+- **User need and expected behavior:** Given package/ecosystem/version, report
+  OSV findings, no returned matches, or source failure with evidence and uncertainty.
+  Reviewer scenarios and prohibited claims are in `M0_BASELINE.md`.
+- **Architecture and owner of each decision:** OSV owns source records;
+  `OSVClient.query` owns validated requests and normalized evidence;
+  CLI `main` owns output and exit codes. A reviewer owns interpretation.
+  Python standard-library HTTP and fixture tests keep this boundary small.
+- **Ordinary execution trace:** `test_request_and_validated_result` →
+  `Package.__post_init__` → `OSVClient.query` → POST `/v1/query` → fixture
+  JSON validation → deduplicated IDs/links → `QueryResult.to_dict`.
+- **Failure trace:** CLI case test → `main` → `OSVClient.query` → malformed
+  fixture ID 42 → `OSVMalformedResponse` → source_failure JSON on stderr, exit 1.
+- **Tests/evals and observed results:** 10 offline tests passed under Python 3.12;
+  `git diff --check` passed. Timeout, HTTP 400/429/500, transport failure,
+  malformed JSON/schema, empty and omitted lists exercised. Live check exited 1:
+  `OSVTransportError`, `[Errno 1] Operation not permitted`; live API not verified.
+- **Cost/latency/usage evidence:** No model usage. Offline suite completed in
+  approximately 0.03 seconds on this workspace; no live latency claim.
+- **What the learner can explain now:** Evidence supports tracing request
+  construction, response validation, and failure reporting. Learner understanding
+  and architecture defense remain unreviewed.
+- **Open questions and next experiment:** Review M0 usefulness criteria and M1
+  traces with the learner; repeat the live check when OSV network access permits.
+  No later milestone started.
+- **Checkout limitation:** Local branch work at initial commit aa4100b lacked
+  the instruction documents. Fetch failed because proxy port 8080 was unreachable.
+  Documents were read/copied from GitHub main through the connector; existing
+  uncommitted work was retained. This was not a Git merge or verified full sync.
+
+## Review record — 2026-10-13 — M0/M1 checkpoint and network diagnosis
+
+- Checkpoint commit: `c07f3fe` preserves the entire existing increment.
+- Reviewed the three cases against `M0_BASELINE.md`: findings carry IDs/links;
+  empty results explicitly disclaim security; failures carry a distinct category
+  and never become empty success. This is a code/evidence review, not proof of
+  learner understanding or an organizational compliance decision.
+- Reviewed request trace: `OSVClient.query` validates `Package`, builds JSON,
+  calls `urlopen`, validates IDs, and returns `QueryResult`; the fixture test
+  captures the actual Request object and checks method, path, body, and timeout.
+- Reviewed malformed trace: ID 42 is rejected by `OSVClient.query`; CLI `main`
+  catches `OSVMalformedResponse` and reports source_failure, exit 1.
+- Exact offline command: `.venv/bin/python -m unittest discover -s tests -v`;
+  ten tests passed in 0.022 seconds. `git diff --check` passed.
+- Actual live attempt command: `.venv/bin/python -m security_assessment.live_smoke`.
+  Intended request: POST `https://api.osv.dev/v1/query`, JSON
+  `{"package":{"name":"lodash","ecosystem":"npm"},"version":"4.17.20"}`,
+  timeout 15 seconds. `live_smoke.main` calls `OSVClient.query`; `urlopen` fails
+  with `[Errno 1] Operation not permitted`; client raises `OSVTransportError`;
+  smoke reports the error and exits 1. No HTTP status, response, or IDs received.
+  The request was attempted, not confirmed delivered to OSV.
+- Environment status: restricted, enforced revision 13; GitHub permitted,
+  api.osv.dev absent. Configured proxy is proxy:8080; TCP reachability checks to
+  that proxy fail with PermissionError. Git fetch also reports proxy connection
+  failure. Destination-policy denial and proxy reachability are separate issues.
+  No proxy bypass, policy-file edits, credential reads, or route changes attempted.
+- Save/republish is blocked: only a read-only environment-status tool is exposed.
+  Requested the user update the allowlist and republish via environment settings.
+- `git fetch origin main` failed; upstream README, AGENTS.md, and learning plan
+  read through the GitHub connector. Remote main observed at cac363950edb6dc874f004196c19a9afb8f55ff0.
+  Restored full upstream README guidance and retained implementation commands;
+  AGENTS.md is unchanged from main; ledger retains upstream roadmap plus evidence.
+- Remaining verification: successful live OSV request after approved republish,
+  and learner review. M2 remains out of scope.

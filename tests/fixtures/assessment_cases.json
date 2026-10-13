@@ -1,0 +1,23 @@
+[
+  {
+    "case": "vulnerabilities",
+    "package": {"name": "example", "ecosystem": "PyPI", "version": "1.0"},
+    "response_fixture": "vulnerabilities.json",
+    "expected_status": "vulnerabilities_returned",
+    "expected_wording": "Vulnerabilities returned by this source."
+  },
+  {
+    "case": "empty",
+    "package": {"name": "example", "ecosystem": "PyPI", "version": "1.0"},
+    "response_fixture": "empty.json",
+    "expected_status": "no_vulnerabilities_returned",
+    "expected_wording": "No vulnerabilities returned by this source; this is not proof that the package is secure."
+  },
+  {
+    "case": "source_failure",
+    "package": {"name": "example", "ecosystem": "PyPI", "version": "1.0"},
+    "response_fixture": "malformed.json",
+    "expected_errors": ["OSVTimeout", "OSVHTTPError", "OSVTransportError", "OSVMalformedResponse"],
+    "expected_wording": "Assessment unavailable from this source; no security conclusion can be drawn."
+  }
+]
